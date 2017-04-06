@@ -37,9 +37,7 @@ public class SentimentRunner implements Runnable {
             credentials = new ProfileCredentialsProvider("/Users/Raphael/IdeaProjects/analyzer/src/main/java/org/tweet/sentiment/analyis/analyzer/credentials","sqs").getCredentials();
         } catch (Exception e) {
             throw new AmazonClientException(
-                    "Cannot load the credentials from the credential profiles file. " +
-                            "Please make sure that your credentials file is at the correct " +
-                            "location (~/.aws/credentials), and is in valid format.",
+                    "Cannot load the credentials from the credential profiles file. ",
                     e);
         }
         AmazonSQSClientBuilder clientBuilder = AmazonSQSClientBuilder.standard().withCredentials(new AWSStaticCredentialsProvider(credentials));
@@ -50,18 +48,16 @@ public class SentimentRunner implements Runnable {
     public void run() {
         JSONParser parser = new JSONParser();
 
-        // Get twitter message from queue
         try {
             while (!isStopped) {
-                // Receive messages
-                //System.out.println("Receiving messages from MyQueue.\n");
+                // Receive fetched tweets
                 String queueUrl = sqs.getQueueUrl("fetched-tweets").getQueueUrl();
                 ReceiveMessageRequest receiveMessageRequest = new ReceiveMessageRequest(queueUrl);
                 List<Message> messages = sqs.receiveMessage(receiveMessageRequest).getMessages();
 
-                System.out.println("  Message");
+                /*System.out.println("  Message");
                 System.out.println("    MessageId:     " + messages.get(0).getMessageId());
-                System.out.println("    Body:          " + messages.get(0).getBody());
+                System.out.println("    Body:          " + messages.get(0).getBody());*/
 
                 Object obj = parser.parse(messages.get(0).getBody());
                 JSONObject jsonObject = (JSONObject) obj;
@@ -70,24 +66,19 @@ public class SentimentRunner implements Runnable {
 
                 int sentiment = NLP.findSentiment((String)tweet.get("text"));
                 jsonObject.put("Sentiment", sentiment);
-                System.out.println(jsonObject.get("Sentiment"));
+                //System.out.println(jsonObject.get("Sentiment"));
 
-                //String msg = jsonObject.toJSONString();
 
-                // Delete a message
+                // Delete the fetched tweet
                 System.out.println("Deleting a message.\n");
                 String messageReceiptHandle = messages.get(0).getReceiptHandle();
                 sqs.deleteMessage(new DeleteMessageRequest(queueUrl, messageReceiptHandle));
 
-
-                // REPLACE WITH PUT INTO QUEUE CODE
-                // Send a message
-                String dbQueue = sqs.getQueueUrl("fetched-tweets").getQueueUrl();
-                System.out.println("Sending a message to MyQueue.\n");
+                // Send the analyzed tweet
+                String dbQueue = sqs.getQueueUrl("analyised-tweets").getQueueUrl();
+                System.out.println("Sending a message to analyzed-tweets.\n");
                 sqs.sendMessage(new SendMessageRequest(dbQueue, jsonObject.toJSONString()));
 
-                //System.out.println(msg);
-                //System.out.println(jsonObject.get("Sentiment"));
             }
 
         } catch (Exception e) {
