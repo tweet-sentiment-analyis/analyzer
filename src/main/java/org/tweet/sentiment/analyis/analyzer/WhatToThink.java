@@ -2,7 +2,7 @@ package org.tweet.sentiment.analyis.analyzer;
 
 public class WhatToThink {
 
-	private static int nThreads = 10;
+	private static int nThreads = 1;
 
 	public static void main(String[] args) {
 		SentimentRunner sentimentThread = new SentimentRunner();

@@ -1,18 +1,20 @@
 package org.tweet.sentiment.analyis.analyzer;
 
+import java.util.List;
+
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.profile.ProfileCredentialsProvider;
-import com.amazonaws.regions.Region;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.sqs.AmazonSQS;
-import com.amazonaws.services.sqs.AmazonSQSClient;
 import com.amazonaws.services.sqs.AmazonSQSClientBuilder;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.services.sqs.model.DeleteMessageRequest;
+import com.amazonaws.services.sqs.model.SendMessageRequest;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
-
-import java.io.FileReader;
+import com.amazonaws.services.sqs.model.Message;
+import com.amazonaws.services.sqs.model.ReceiveMessageRequest;
 
 /**
  * Created by Raphael on 04.04.17.
@@ -21,20 +23,18 @@ public class SentimentRunner implements Runnable {
 
     private boolean isStopped;
 
-    private String queueUrl;
-
     private AmazonSQS sqs;
 
     public SentimentRunner() {
         NLP.init();
-         /*
+        /*
          * The ProfileCredentialsProvider will return your [default]
          * credential profile by reading from the credentials file located at
          * (~/.aws/credentials).
          */
-       /* AWSCredentials credentials = null;
+       AWSCredentials credentials = null;
         try {
-            credentials = new ProfileCredentialsProvider().getCredentials();
+            credentials = new ProfileCredentialsProvider("/Users/Raphael/IdeaProjects/analyzer/src/main/java/org/tweet/sentiment/analyis/analyzer/credentials","sqs").getCredentials();
         } catch (Exception e) {
             throw new AmazonClientException(
                     "Cannot load the credentials from the credential profiles file. " +
@@ -43,8 +43,8 @@ public class SentimentRunner implements Runnable {
                     e);
         }
         AmazonSQSClientBuilder clientBuilder = AmazonSQSClientBuilder.standard().withCredentials(new AWSStaticCredentialsProvider(credentials));
-        clientBuilder.setRegion(Regions.EU_CENTRAL_1.getName());
-        sqs = clientBuilder.build();*/
+        clientBuilder.setRegion(Regions.US_WEST_2.getName());
+        sqs = clientBuilder.build();
     }
 
     public void run() {
@@ -54,38 +54,40 @@ public class SentimentRunner implements Runnable {
         try {
             while (!isStopped) {
                 // Receive messages
-               /* System.out.println("Receiving messages from MyQueue.\n");
+                //System.out.println("Receiving messages from MyQueue.\n");
+                String queueUrl = sqs.getQueueUrl("fetched-tweets").getQueueUrl();
                 ReceiveMessageRequest receiveMessageRequest = new ReceiveMessageRequest(queueUrl);
                 List<Message> messages = sqs.receiveMessage(receiveMessageRequest).getMessages();
-                for (Message message : messages) {
-                    System.out.println("  Message");
-                    System.out.println("    MessageId:     " + message.getMessageId());
-                    System.out.println("    ReceiptHandle: " + message.getReceiptHandle());
-                    System.out.println("    MD5OfBody:     " + message.getMD5OfBody());
-                    System.out.println("    Body:          " + message.getBody());
-                    for (Map.Entry<String, String> entry : message.getAttributes().entrySet()) {
-                        System.out.println("  Attribute");
-                        System.out.println("    Name:  " + entry.getKey());
-                        System.out.println("    Value: " + entry.getValue());
-                    }
-                }*/
 
-                Object obj = parser.parse(new FileReader("/Users/Raphael/Documents/UZH/2_Semester/testMessage.json"));
+                System.out.println("  Message");
+                System.out.println("    MessageId:     " + messages.get(0).getMessageId());
+                System.out.println("    Body:          " + messages.get(0).getBody());
+
+                Object obj = parser.parse(messages.get(0).getBody());
                 JSONObject jsonObject = (JSONObject) obj;
 
-                String text = (String) jsonObject.get("text");
-                int sentiment = NLP.findSentiment(text);
+                JSONObject tweet = (JSONObject) jsonObject.get("tweet");
+
+                int sentiment = NLP.findSentiment((String)tweet.get("text"));
                 jsonObject.put("Sentiment", sentiment);
-                String msg = jsonObject.toJSONString();
+                System.out.println(jsonObject.get("Sentiment"));
+
+                //String msg = jsonObject.toJSONString();
+
+                // Delete a message
+                System.out.println("Deleting a message.\n");
+                String messageReceiptHandle = messages.get(0).getReceiptHandle();
+                sqs.deleteMessage(new DeleteMessageRequest(queueUrl, messageReceiptHandle));
 
 
                 // REPLACE WITH PUT INTO QUEUE CODE
                 // Send a message
-               /* System.out.println("Sending a message to MyQueue.\n");
-                sqs.sendMessage(new SendMessageRequest(queueUrl, msg));*/
+                String dbQueue = sqs.getQueueUrl("fetched-tweets").getQueueUrl();
+                System.out.println("Sending a message to MyQueue.\n");
+                sqs.sendMessage(new SendMessageRequest(dbQueue, jsonObject.toJSONString()));
 
-                System.out.println(msg);
-                System.out.println(jsonObject.get("Sentiment"));
+                //System.out.println(msg);
+                //System.out.println(jsonObject.get("Sentiment"));
             }
 
         } catch (Exception e) {
