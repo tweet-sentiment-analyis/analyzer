@@ -55,29 +55,32 @@ public class SentimentRunner implements Runnable {
                 ReceiveMessageRequest receiveMessageRequest = new ReceiveMessageRequest(queueUrl);
                 List<Message> messages = sqs.receiveMessage(receiveMessageRequest).getMessages();
 
-                /*System.out.println("  Message");
+                if (messages.size() > 0 ) {
+                     /*System.out.println("  Message");
                 System.out.println("    MessageId:     " + messages.get(0).getMessageId());
                 System.out.println("    Body:          " + messages.get(0).getBody());*/
 
-                Object obj = parser.parse(messages.get(0).getBody());
-                JSONObject jsonObject = (JSONObject) obj;
+                    Object obj = parser.parse(messages.get(0).getBody());
+                    JSONObject jsonObject = (JSONObject) obj;
 
-                JSONObject tweet = (JSONObject) jsonObject.get("tweet");
+                    JSONObject tweet = (JSONObject) jsonObject.get("tweet");
 
-                int sentiment = NLP.findSentiment((String)tweet.get("text"));
-                jsonObject.put("Sentiment", sentiment);
-                //System.out.println(jsonObject.get("Sentiment"));
+                    int sentiment = NLP.findSentiment((String)tweet.get("text"));
+                    jsonObject.put("Sentiment", sentiment);
+                    //System.out.println(jsonObject.get("Sentiment"));
 
 
-                // Delete the fetched tweet
-                System.out.println("Deleting a message.\n");
-                String messageReceiptHandle = messages.get(0).getReceiptHandle();
-                sqs.deleteMessage(new DeleteMessageRequest(queueUrl, messageReceiptHandle));
+                    // Delete the fetched tweet
+                    System.out.println("Deleting a message.\n");
+                    String messageReceiptHandle = messages.get(0).getReceiptHandle();
+                    sqs.deleteMessage(new DeleteMessageRequest(queueUrl, messageReceiptHandle));
 
-                // Send the analyzed tweet
-                String dbQueue = sqs.getQueueUrl("analyised-tweets").getQueueUrl();
+                    // Send the analyzed tweet
+                /*String dbQueue = sqs.getQueueUrl("analyised-tweets").getQueueUrl();
                 System.out.println("Sending a message to analyzed-tweets.\n");
-                sqs.sendMessage(new SendMessageRequest(dbQueue, jsonObject.toJSONString()));
+                sqs.sendMessage(new SendMessageRequest(dbQueue, jsonObject.toJSONString()));*/
+                }
+
 
             }
 
