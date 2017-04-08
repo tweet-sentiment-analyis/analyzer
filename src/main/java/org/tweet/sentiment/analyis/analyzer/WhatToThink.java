@@ -1,22 +1,18 @@
 package org.tweet.sentiment.analyis.analyzer;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 public class WhatToThink {
 
 	private static int nThreads = 1;
 
+	private static ExecutorService executorService = Executors.newSingleThreadExecutor();
+
 	public static void main(String[] args) {
 		SentimentRunner sentimentThread = new SentimentRunner();
 
-		for (int i = 0; i< nThreads; i++) {
-			Thread t = new Thread(sentimentThread);
-			t.start();
-		}
-
-		try {
-			Thread.sleep(1000);
-		} catch (Exception e) {
-		}
-		sentimentThread.terminate();
+		executorService.submit(sentimentThread);
 
 	}
 }
